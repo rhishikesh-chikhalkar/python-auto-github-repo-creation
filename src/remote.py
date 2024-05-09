@@ -60,6 +60,7 @@ if __name__ == "__main__":
 commands = [
     f"(echo # {repo.name} ) > README.md",
     "(echo *__pycache__ && echo *.code && echo *.vscode && echo *.idea && echo *local_env && echo *venv && echo *.venv) > .gitignore",
+    "(echo requests ) > requirements.txt",
     f"mkdir {cmd_dir}",
     f"(echo @echo off) > {cmd_dir}/{repo_name}.cmd",
     f"mkdir {config_dir}",
