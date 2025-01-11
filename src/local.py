@@ -2,7 +2,7 @@ import os
 import sys
 
 foldername = str(sys.argv[1])
-path = os.environ.get("mp")
+path = os.environ.get("github-local-directory")
 print(f"path: {path}")
 _dir = path + "/" + foldername
 
