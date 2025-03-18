@@ -72,6 +72,7 @@ def get_directory_structure():
         "config": "config",
         "src": "src",
         "app": "src/app",
+        "utilities": "src/app/utilities",
         "tests": "src/tests",
         "data": "data",
         "data_input": "data/input",
@@ -118,7 +119,16 @@ furnished to do so, subject to the following conditions:
 
 [Full MIT license text here...]
 """
-    main_script = f"""
+    main_script = """
+from src.app.utilities.logger import logger
+
+def main():
+    logger.info("Application started.")
+
+if __name__ == "__main__":
+    main()
+"""
+    logger_script = f"""
 import logging
 import os
 
@@ -140,14 +150,8 @@ stream_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
-
-def main():
-    logger.info("Application started.")
-
-if __name__ == "__main__":
-    main()
 """
-    return pyproject_toml, license_content, main_script
+    return pyproject_toml, license_content, main_script, logger_script
 
 
 def get_git_commands(repo_name, repo_url):
@@ -163,20 +167,20 @@ def get_git_commands(repo_name, repo_url):
     """
     commands = [
         f"echo # {repo_name} > README.md",
-        "echo __pycache__/ > .gitignore",
-        "echo *.code > .gitignore",
-        "echo *.vscode > .gitignore",
-        "echo *.idea > .gitignore",
-        "echo *local_env > .gitignore",
-        "echo *venv > .gitignore",
-        "echo *.venv > .gitignore",
+        "echo __pycache__/ >> .gitignore",
+        "echo *.code >> .gitignore",
+        "echo *.vscode >> .gitignore",
+        "echo *.idea >> .gitignore",
+        "echo *local_env >> .gitignore",
+        "echo *venv >> .gitignore",
+        "echo *.venv >> .gitignore",
         "echo requests > requirements.txt",
-        "mkdir cmd",
-        f"echo @echo off > cmd/{repo_name}.cmd",
-        "mkdir config",
-        f"echo KEY=Value > config/{repo_name}.env",
+        f"mkdir cmd && echo @echo off > cmd/{repo_name}.cmd",
+        f"mkdir config && echo KEY=Value > config/{repo_name}.env",
         "mkdir logs",
-        "echo INFO > logs/log_levels.info",
+        f"type {LOG_LEVELS_FILE} > logs/log_levels.info"
+        if os.path.exists(LOG_LEVELS_FILE)
+        else "echo INFO > logs/log_levels.info",
         "mkdir src",
         "mkdir src/app",
         "mkdir src/tests",
@@ -209,14 +213,16 @@ def create_project_directory_structure(base_path, dirs):
         base_path (str): Base path for the project
         dirs (dict): Directory structure
     """
-    os.mkdir(base_path)
+    os.makedirs(base_path, exist_ok=True)
     os.chdir(base_path)
 
     for directory in dirs.values():
         os.makedirs(directory, exist_ok=True)
 
 
-def write_placeholder_files(dirs, pyproject_toml, license_content, main_script):
+def write_placeholder_files(
+    dirs, pyproject_toml, license_content, main_script, logger_script
+):
     """
     Write placeholder files in the project directory.
 
@@ -226,8 +232,15 @@ def write_placeholder_files(dirs, pyproject_toml, license_content, main_script):
         license_content (str): Content for LICENSE
         main_script (str): Content for main script
     """
+    # Ensure the directories exist before writing files
+    os.makedirs(dirs["app"], exist_ok=True)
+    os.makedirs(dirs["tests"], exist_ok=True)
+
     with open(f"{dirs['app']}/main.py", "w", encoding="utf-8") as main_file:
         main_file.write(main_script)
+
+    with open(f"{dirs['utilities']}/logger.py", "w", encoding="utf-8") as logger_file:
+        logger_file.write(logger_script)
 
     with open(f"{dirs['tests']}/test_main.py", "w", encoding="utf-8") as test_file:
         test_file.write("import pytest\n\ndef test_example():\n    assert True\n")
@@ -265,17 +278,24 @@ def main():
     repo_url = create_github_repo(user, folder_name) if action_type == "g" else None
 
     dirs = get_directory_structure()
-    pyproject_toml, license_content, main_script = get_placeholder_content(folder_name)
+    pyproject_toml, license_content, main_script, logger_script = (
+        get_placeholder_content(folder_name)
+    )
     git_commands = get_git_commands(folder_name, repo_url)
 
     try:
         create_project_directory_structure(base_path, dirs)
-        write_placeholder_files(dirs, pyproject_toml, license_content, main_script)
+
+        os.chdir(base_path)
+
+        write_placeholder_files(
+            dirs, pyproject_toml, license_content, main_script, logger_script
+        )
+
         execute_commands(git_commands)
 
         print(f"Project '{folder_name}' created successfully at {base_path}")
 
-        # Open the project in VS Code
         os.system("code .")
 
     except (OSError, IOError, GithubException) as error:
